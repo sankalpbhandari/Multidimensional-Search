@@ -1,7 +1,7 @@
-/**
- * Starter code for MDS
- *
- * @authors: Angad Vittal(AXV180010)
+/*
+  Starter code for MDS
+
+  @authors: Angad Vittal(AXV180010)
  * Divyesh Patel(DGP170030)
  * Sankalp Bhandari(SSB170006)
  * Shraddha Bang(SXB180041)
@@ -15,13 +15,13 @@ import java.util.*;
 
 
 public class MDS {
-    TreeMap<Long, Item> itemMap; // Map of item id and item
-    HashMap<Long, HashSet<Long>> table; // Map of description and item ids
+    TreeMap<Long, Product> itemMap; // Map of item id and item
+    HashMap<Long, HashSet<Long>> nameMap; // Map of description and item ids
 
     // Constructors
     public MDS() {
         itemMap = new TreeMap<>();
-        table = new HashMap<>();
+        nameMap = new HashMap<>();
     }
 
     /* Public methods of MDS. Do not change their signatures.
@@ -33,45 +33,46 @@ public class MDS {
        Returns 1 if the item is new, and 0 otherwise.
     */
     public int insert(long id, Money price, List<Long> list) {
-        if (itemMap.containsKey(id)) {
-            Item oldItem = itemMap.get(id);
-            if (list != null && list.size() > 0) {
-                removeNames(id, new ArrayList<>(oldItem.description));
-                oldItem.description.clear();
-                oldItem.description.addAll(list);
-                updateTable(id);
-            }
-            oldItem.price = price;
-            return 0;
+        if (!itemMap.containsKey(id)) {
+            Product product = new Product(id, price, list);
+            itemMap.put(id, product);
+            updateNameMap(id);
+            return 1;
         }
-        Item item = new Item(id, price, list);
-        itemMap.put(id, item);
-        updateTable(id);
-        return 1;
+        Product oldProduct = itemMap.get(id);
+        if (list != null && list.size() > 0) {
+            removeNames(id, new ArrayList<>(oldProduct.name));
+            oldProduct.name.clear();
+            oldProduct.name.addAll(list);
+            updateNameMap(id);
+        }
+        oldProduct.price = price;
+        return 0;
+
     }
 
-    private void updateTable(long id) {
-        Item item = findItem(id);
-        for (long desc : item.description) {
-            if (table.containsKey(desc)) {
-                table.get(desc).add(id);
+    private void updateNameMap(long id) {
+        Product product = findProduct(id);
+        for (long desc : product.name) {
+            if (nameMap.containsKey(desc)) {
+                nameMap.get(desc).add(id);
             } else {
                 HashSet<Long> itemIds = new HashSet<>();
                 itemIds.add(id);
-                table.put(desc, itemIds);
+                nameMap.put(desc, itemIds);
             }
         }
     }
 
-    private Item findItem(long id) {
+    private Product findProduct(long id) {
         return itemMap.getOrDefault(id, null);
     }
 
     // b. Find(id): return price of item with given id (or 0, if not found).
     public Money find(long id) {
-        Item item = findItem(id);
-        if (item != null)
-            return item.price;
+        Product product = findProduct(id);
+        if (product != null)
+            return product.price;
         return new Money();
     }
 
@@ -81,15 +82,15 @@ public class MDS {
        or 0, if such an id did not exist.
     */
     public long delete(long id) {
-        Item item = findItem(id);
-        if (null == item)
+        Product product = findProduct(id);
+        if (null == product)
             return 0;
         long sum = 0;
-        for (long desc : item.description) {
+        for (long desc : product.name) {
             sum += desc;
-            table.get(desc).remove(id);
-            if (table.get(desc).isEmpty())
-                table.remove(desc);
+            nameMap.get(desc).remove(id);
+            if (nameMap.get(desc).isEmpty())
+                nameMap.remove(desc);
         }
         itemMap.remove(id);
         return sum;
@@ -102,14 +103,14 @@ public class MDS {
        Return 0 if there is no such item.
     */
     public Money findMinPrice(long n) {
-        if (!table.containsKey(n))
+        if (!nameMap.containsKey(n))
             return new Money();
-        HashSet<Long> itemIds = table.get(n);
+        HashSet<Long> itemIds = nameMap.get(n);
         Money minPrice = convertToMoney(Long.MAX_VALUE);
         for (long id : itemIds) {
-            Item tempItem = findItem(id);
-            if (tempItem.price.compareTo(minPrice) < 0) {
-                minPrice = tempItem.price;
+            Product tempProduct = findProduct(id);
+            if (tempProduct.price.compareTo(minPrice) < 0) {
+                minPrice = tempProduct.price;
             }
         }
         return minPrice;
@@ -121,14 +122,14 @@ public class MDS {
        Return 0 if there is no such item.
     */
     public Money findMaxPrice(long n) {
-        if (!table.containsKey(n))
+        if (!nameMap.containsKey(n))
             return new Money();
-        HashSet<Long> itemIds = table.get(n);
+        HashSet<Long> itemIds = nameMap.get(n);
         Money maxPrice = new Money();
         for (long id : itemIds) {
-            Item tempItem = findItem(id);
-            if (tempItem.price.compareTo(maxPrice) > 0) {
-                maxPrice = tempItem.price;
+            Product tempProduct = findProduct(id);
+            if (tempProduct.price.compareTo(maxPrice) > 0) {
+                maxPrice = tempProduct.price;
             }
         }
         return maxPrice;
@@ -140,16 +141,16 @@ public class MDS {
        their prices fall within the given range, [low, high].
     */
     public int findPriceRange(long n, Money low, Money high) {
-        if (!table.containsKey(n))
+        if (!nameMap.containsKey(n))
             return 0;
         if (low.compareTo(high) > 0)
             return 0;
 
         int count = 0;
-        HashSet<Long> itemIds = table.get(n);
+        HashSet<Long> itemIds = nameMap.get(n);
         for (long id : itemIds) {
-            Item tempItem = findItem(id);
-            if (tempItem.price.compareTo(low) >= 0 && tempItem.price.compareTo(high) <= 0)
+            Product tempProduct = findProduct(id);
+            if (tempProduct.price.compareTo(low) >= 0 && tempProduct.price.compareTo(high) <= 0)
                 count += 1;
         }
         return count;
@@ -163,19 +164,20 @@ public class MDS {
     public Money priceHike(long l, long h, double rate) {
         if (itemMap.firstKey().compareTo(h) > 0 || l > h || itemMap.lastKey().compareTo(l) < 0)
             return new Money();
-        long increment = 0;
-        long start = itemMap.ceilingKey(l);
-        long end = itemMap.floorKey(h);
-        Map<Long, Item> subMap = itemMap.subMap(start, true, end, true);
-        for (long id : subMap.keySet()) {
-            Item item = findItem(id);
-            long oldPrice = convertToLong(item.price);
-            long rateInc = (long) Math.floor(oldPrice * rate / 100);
+        long hike = 0;
+        for (long id : itemMap.keySet()) {
+            if (id < l)
+                continue;
+            if (id > h)
+                break;
+            Product product = findProduct(id);
+            long oldPrice = convertToLong(product.price);
+            long rateInc = (long) (oldPrice * rate / 100);
             Money newPrice = convertToMoney(oldPrice + rateInc);
-            increment += rateInc;
+            hike += rateInc;
             insert(id, newPrice, null);
         }
-        return convertToMoney(increment);
+        return convertToMoney(hike);
     }
 
     private Long convertToLong(Money money) {
@@ -199,34 +201,29 @@ public class MDS {
             return 0;
 
         long sum = 0;
-        Item item = findItem(id);
+        Product product = findProduct(id);
         for (long desc : list) {
-            if (item.description.contains(desc)) {
+            if (product.name.contains(desc)) {
                 sum += desc;
-                table.get(desc).remove(id);
-                if (table.get(desc).isEmpty())
-                    table.remove(desc);
+                nameMap.get(desc).remove(id);
+                if (nameMap.get(desc).isEmpty())
+                    nameMap.remove(desc);
             }
-            item.description.remove(desc);
+            product.name.remove(desc);
         }
         return sum;
     }
 
-    static class Item {
-        private Long id;
-        private List<Long> description;
+    static class Product {
+        private long id;
         private Money price;
+        private List<Long> name;
 
-        public Item(long id, Money p, List<Long> list) {
+        public Product(long id, Money price, List<Long> name) {
             this.id = id;
-            this.price = p;
-            this.description = new ArrayList<>();
-            this.description.addAll(list);
-        }
-
-        public String toString() {
-            return "{" + id + ",\t" + price.toString() + ",\t"
-                    + description.toString() + "}";
+            this.price = price;
+            this.name = new ArrayList<>();
+            this.name.addAll(name);
         }
     }
 
